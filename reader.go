@@ -1,10 +1,9 @@
-package main
+package sqsReader
 
 import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"flag"
 	"github.com/mikedewar/aws4"
 	"io/ioutil"
 	"log"
@@ -24,11 +23,11 @@ type Reader struct {
 	signatureVersion string
 	waitTime         string
 	maxMsgs          string
-	pollChan         chan bool        // triggers a poll
-	msgChan          chan *sqsMessage // messages to be handled
-	delChan          chan []string    // receipt handles to be deleted from queue
-	quitChan         chan bool        // stops the reader
-
+	pollChan         chan bool                   // triggers a poll
+	msgChan          chan *sqsMessage            // messages to be handled
+	delChan          chan []string               // receipt handles to be deleted from queue
+	QuitChan         chan bool                   // stops the reader
+	OutChan          chan map[string]interface{} // output channel for the client
 }
 
 func NewReader(sqsEndpoint, accessKey, accessSecret string) *Reader {
@@ -54,7 +53,8 @@ func NewReader(sqsEndpoint, accessKey, accessSecret string) *Reader {
 		pollChan:         make(chan bool),
 		msgChan:          make(chan *sqsMessage),
 		delChan:          make(chan []string),
-		quitChan:         make(chan bool),
+		QuitChan:         make(chan bool),
+		OutChan:          make(chan map[string]interface{}),
 	}
 	return r
 }
@@ -85,7 +85,6 @@ func (r *Reader) buildDeleteQuery(receipts []string) string {
 }
 
 func (r *Reader) poll() (sqsMessage, error) {
-	log.Println("polling start")
 	var m sqsMessage
 	url := r.buildPollQuery()
 	resp, err := r.client.Get(url)
@@ -101,25 +100,21 @@ func (r *Reader) poll() (sqsMessage, error) {
 	if err != nil {
 		return m, err
 	}
-	log.Println("polling complete")
 	return m, nil
 }
 
 func (r *Reader) del(receipts []string) error {
-	log.Println("deleting start")
 	url := r.buildDeleteQuery(receipts)
 	resp, err := r.client.Get(url)
 	if err != nil {
 		return err
 	}
 	resp.Body.Close()
-	log.Println("deleting complete")
 	return nil
 }
 
 // TODO this should be set by user
 func (r *Reader) HandleMessage(m *sqsMessage) error {
-	log.Println("handling start")
 	var (
 		m1, m2 map[string]interface{}
 		err    error
@@ -142,16 +137,15 @@ func (r *Reader) HandleMessage(m *sqsMessage) error {
 			if err != nil {
 				return err
 			}
+			r.OutChan <- m2
 		}
 	}
-	log.Println("handling complete")
 	return nil
 }
 
 func (r *Reader) Start() {
 	go func() {
 		// bang to start!
-		log.Println("bang!")
 		r.pollChan <- true
 	}()
 	for {
@@ -188,25 +182,8 @@ func (r *Reader) Start() {
 				// deleted
 				r.delChan <- m.ReceiptHandle
 			}(m)
-		case <-r.quitChan:
+		case <-r.QuitChan:
 			return
 		}
 	}
-}
-
-func (r *Reader) Stop() {
-	// never stop!
-}
-
-func main() {
-	log.SetFlags(log.Lmicroseconds)
-	var (
-		sqsEndpoint  = flag.String("endpoint", "", "sqs Endpoint")
-		accessKey    = flag.String("accessKey", "", "your access key")
-		accessSecret = flag.String("accessSecret", "", "your access secrety")
-	)
-	flag.Parse()
-	r := NewReader(*sqsEndpoint, *accessKey, *accessSecret)
-	go r.Start()
-	<-r.quitChan // will never recieve
 }
