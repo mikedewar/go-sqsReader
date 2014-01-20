@@ -18,7 +18,9 @@ usage
 
 run like
 
-  sqsReader -accessKey=abc123 -accessSecret=xyz456 -endpoint="https://sqs.us-east-1.amazonaws.com/12345678/MyQueue"
+```
+sqsReader -accessKey=abc123 -accessSecret=xyz456 -endpoint="https://sqs.us-east-1.amazonaws.com/12345678/MyQueue"
+```
 
 and messages will magically appear in standard out.
 
