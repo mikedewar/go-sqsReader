@@ -30,7 +30,7 @@ type Reader struct {
 	OutChan          chan map[string]interface{} // output channel for the client
 }
 
-func NewReader(sqsEndpoint, accessKey, accessSecret string) *Reader {
+func NewReader(sqsEndpoint, accessKey, accessSecret string, outChan chan map[string]interface{}) *Reader {
 	// ensure that the sqsEndpoint has a ? at the end
 	if !strings.HasSuffix(sqsEndpoint, "?") {
 		sqsEndpoint += "?"
@@ -54,7 +54,7 @@ func NewReader(sqsEndpoint, accessKey, accessSecret string) *Reader {
 		msgChan:          make(chan *sqsMessage),
 		delChan:          make(chan []string),
 		QuitChan:         make(chan bool),
-		OutChan:          make(chan map[string]interface{}),
+		OutChan:          outChan,
 	}
 	return r
 }

@@ -15,7 +15,8 @@ func main() {
 		accessSecret = flag.String("accessSecret", "", "your access secrety")
 	)
 	flag.Parse()
-	r := sqsReader.NewReader(*sqsEndpoint, *accessKey, *accessSecret)
+	outChan := make(chan map[string]interface{})
+	r := sqsReader.NewReader(*sqsEndpoint, *accessKey, *accessSecret, outChan)
 	go r.Start()
 	for {
 		select {
