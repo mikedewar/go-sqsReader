@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/url"
 	"strings"
+	"fmt"
 )
 
 type sqsMessage struct {
@@ -73,12 +74,14 @@ func (r *Reader) buildPollQuery() string {
 
 func (r *Reader) buildDeleteQuery(receipts []string) string {
 	query := url.Values{}
-	query.Set("Action", "DeleteMessage")
+	query.Set("Action", "DeleteMessageBatch")
 	query.Set("Version", r.version)
 	query.Set("SignatureVersion", r.signatureVersion)
 	for i, r := range receipts {
-		query.Add("DeleteMessageBatchRequestEntry.n.Id", "msg"+string(i))
-		query.Add("DeleteMessageBatchRequestEntry.n.ReceiptHandle", r)
+		id  := fmt.Sprintf("DeleteMessageBatchRequestEntry.%d.Id", (i + 1))
+		receipt := fmt.Sprintf("DeleteMessageBatchRequestEntry.%d.ReceiptHandle", (i + 1))
+		query.Add(id, fmt.Sprintf("msg%d",(i+1)))
+		query.Add(receipt, r)
 	}
 	url := r.sqsEndpoint + query.Encode()
 	return url
