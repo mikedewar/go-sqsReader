@@ -193,3 +193,7 @@ func (r *Reader) Start() {
 		}
 	}
 }
+
+func (r *Reader) Stop() {
+	r.QuitChan <- true
+}
