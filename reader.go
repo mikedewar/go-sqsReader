@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"fmt"
+	"time"
 )
 
 type sqsMessage struct {
@@ -158,6 +159,8 @@ func (r *Reader) Start() {
 				msg, err := r.poll()
 				if err != nil {
 					log.Println(err.Error())
+					time.Sleep(1 * time.Second)
+					r.pollChan <- true
 					return
 				}
 				r.msgChan <- &msg
